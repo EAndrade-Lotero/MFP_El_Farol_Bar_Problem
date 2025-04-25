@@ -30,12 +30,18 @@ class ProxyDict :
         self.data_dict = {key:self.initial_val for key in self._keys}
 
     def __call__(self, key: List[int]) -> float:
+        if isinstance(key, List):
+            key = tuple(key)
         return self.data_dict[key]
 
     def update(self, key: List[int], new_value: any) -> None:
+        if isinstance(key, List):
+            key = tuple(key)
         self.data_dict[key] = new_value
 
     def increment(self, key: List[int]) -> None:
+        if isinstance(key, List):
+            key = tuple(key)
         self.data_dict[key] += 1
 
     def keys(self) -> List[Tuple[int]]:
@@ -48,6 +54,8 @@ class ProxyDict :
         row_sum = self.sum()
         row_sum = row_sum if row_sum != 0 else 1
         for key in self.data_dict.keys():
+            if isinstance(key, List):
+                key = tuple(key)
             self.data_dict[key] /= row_sum
 
     def as_array(self) -> np.ndarray:
@@ -55,6 +63,8 @@ class ProxyDict :
 
     def from_dict(self, given_dict: Dict[Tuple[int], float]) -> None:
         for key, value in given_dict.items():
+            if isinstance(key, List):
+                key = tuple(key)
             self.update(
                 key=key,
                 new_value=value

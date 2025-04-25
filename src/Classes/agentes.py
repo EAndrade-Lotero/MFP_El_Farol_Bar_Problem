@@ -65,11 +65,10 @@ class Agente () :
         if self.prev_state_ is not None:
             # determine action preferences given previous state
             preferences = self.determine_action_preferences()
-            probabilities = self.softmax(preferences)
             if self.debug:
                 print('Action probabilities:')
-                print(f'no go:{probabilities[0]} ---- go:{probabilities[1]}')
-            return probabilities[1]
+                print(f'no go:{preferences[0]} ---- go:{preferences[1]}')
+            return preferences[1]
         else:
             # no previous data
             return 0.5

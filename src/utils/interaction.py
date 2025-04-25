@@ -160,16 +160,16 @@ class Episode :
             data.to_csv(file, index=False)
         return data
 
-    def renderize(self, folder:str=None):
+    def renderize(self, file:str=None):
         '''
         Plots the per round history as a grid.
         Input:
-            - folder, string with the name of folder to save the data on.
+            - file, string with the name of file to save the data on.
         '''
         for round in range(self.num_rounds):
             self.play_round(verbose=0)				
             clear_output(wait=True)
-            self.environment.render(folder=folder)
+            self.environment.render(file=file)
             sleep(self.sleep_time)
 
 
@@ -217,7 +217,7 @@ class Experiment :
             self,
             num_agents: Optional[Union[int, None]]=None,
             agent_class: Optional[Union[int, None]]=None
-        ) -> Tuple[Bar, List[CogMod]]:
+        ) -> Tuple[Bar, List[Agente]]:
         if num_agents is None:
             num_agents = self.fixed_parameters['num_agents']
         if agent_class is None:
