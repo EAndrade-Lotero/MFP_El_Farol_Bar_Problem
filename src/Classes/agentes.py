@@ -27,6 +27,10 @@ class Agente () :
         self.debug = False
         self.number = n
         #----------------------
+        # Use strategies
+        #----------------------
+        self.strategy = None
+        #----------------------
         # Parameter bookkeeping
         #----------------------
         self.ingest_parameters(fixed_parameters, free_parameters)
@@ -38,20 +42,37 @@ class Agente () :
             - A decision 0 or 1
         '''
         # Agent recalls previous state?
-        if self.prev_state_ is not None:
-            go_prob = self.go_probability()
-            probabilities = [1 - go_prob, go_prob]
-            decision = np.random.choice(
-                a=[0,1],
-                size=1,
-                p=probabilities
-            )[0]
-            if isinstance(decision, np.int64):
-                decision = int(decision)
-            return decision
-        else:
+        if self.prev_state_ is None:
             # no previous data, so make random decision
             return randint(0, 1)
+        else:
+            if self.strategy is None:
+                decision = self.use_probability()
+            else:
+                assert(self.neighbours is not None)
+                info_neigh = [str(x) for x in self.get_prev_state()]
+                info_neigh = ''.join(info_neigh)
+                try:
+                    decision = int(self.strategy[info_neigh])
+                except Exception as e:
+                    print(f'{self.number=}')
+                    print(f'{self.strategy=}')
+                    print(f'{info_neigh=}')
+                    print(e)
+                    raise e
+        return decision
+
+    def use_probability(self) -> int:
+        go_prob = self.go_probability()
+        probabilities = [1 - go_prob, go_prob]
+        decision = np.random.choice(
+            a=[0,1],
+            size=1,
+            p=probabilities
+        )[0]
+        if isinstance(decision, np.int64):
+            decision = int(decision)
+        return decision
         
     def go_probability(self) -> float:
         '''
@@ -140,6 +161,20 @@ class Agente () :
         self.free_parameters = free_parameters
         self.threshold = fixed_parameters["threshold"]
         self.num_agents = int(fixed_parameters["num_agents"])
+        if 'red' in fixed_parameters.keys():
+            red = fixed_parameters['red'][str(self.number)]
+            self.neighbours = red['neigh']
+            self.strategy = red['strat']
+
+    def get_prev_state(self):
+        if self.prev_state_ is None:
+            return None
+        else:
+            if self.neighbours is None:
+                return self.prev_state_
+            else:
+                info_neigh = np.array(self.prev_state_)[self.neighbours]
+                return tuple(info_neigh)
 
     def __str__(self) -> str:
             '''
@@ -193,12 +228,18 @@ class MFP(Agente) :
         #--------------------------------------------
         # Create counters
         #--------------------------------------------
-        self.states = [0]
-        self.reset()
-        self.belief_strength = free_parameters['belief_strength']
-        assert(self.belief_strength > 0)
+        self.ingest_parameters(fixed_parameters, free_parameters)
         self.states = list(product([0, 1], repeat=self.num_agents))
         self.reset()
+
+    def ingest_parameters(
+                self, 
+                fixed_parameters: Dict[str, any], 
+                free_parameters: Dict[str, any]
+            ) -> None:
+        super().ingest_parameters(fixed_parameters, free_parameters)
+        self.belief_strength = free_parameters['belief_strength']
+        assert(self.belief_strength > 0)
 
     def determine_action_preferences(self) -> List[float]:
         '''
@@ -295,9 +336,19 @@ class MFP(Agente) :
         '''
         super().reset()
         self.prev_state_ = None
-        self.count_states = ProxyDict(keys=self.states, initial_val=0)
+        if self.neighbours is None:
+            # Consider full state
+            keys = self.states
+        else:
+            # Consider only information from neighbours
+            keys = list(product([0, 1], repeat=len(self.neighbours)))
+        # Create state counter
+        self.count_states = ProxyDict(
+            keys=keys, initial_val=0
+        )
+        # Create bar with capacity counter
         self.count_bar_with_capacity = ProxyDict(
-            keys=self.states,
+            keys=keys,
             initial_val=0
         )
 
@@ -326,9 +377,6 @@ class MFP(Agente) :
         tp = TransitionsFrequencyMatrix(num_agents=self.num_agents)
         tp.from_proxydict(self.trans_probs)
         print(tp)
-
-    def get_prev_state(self):
-        return self.prev_state_
 
     @staticmethod
     def name():
