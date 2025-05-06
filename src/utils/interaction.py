@@ -160,13 +160,13 @@ class Episode :
             data.to_csv(file, index=False)
         return data
 
-    def renderize(self, file:str=None):
+    def renderize(self, file:str=None, max_rounds:int=15):
         '''
         Plots the per round history as a grid.
         Input:
             - file, string with the name of file to save the data on.
         '''
-        for round in range(self.num_rounds):
+        for round in range(max_rounds):
             self.play_round(verbose=0)				
             clear_output(wait=True)
             self.environment.render(file=file)

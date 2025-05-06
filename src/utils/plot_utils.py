@@ -118,6 +118,8 @@ class PlotStandardMeasures :
         for m in measures:
             if folder is not None:
                 file_ = PathUtils.add_file_name(folder, f'{m}{suffix}', self.extension)
+            else:
+                file_ = None
             print(f'Plotting {m}...')
             kwargs_ = kwargs.copy()
             if 'title' not in kwargs_.keys():
@@ -129,7 +131,8 @@ class PlotStandardMeasures :
                 categorical=categorical,
                 file=file_
             )
-            list_of_paths.append(file_)
+            if folder is not None:
+                list_of_paths.append(file_)
         return list_of_paths	
 
     def plot(
@@ -186,9 +189,13 @@ class PlotStandardMeasures :
             ax.set_ylabel(variable)
             # ax.set_ylim([-1.1, 1.1])
         else:
+            histplot(
+                data[variable],
+                ax=ax
+            )
             ax.set_xlabel(variable)
             # ax.set_xlim([-1.1, 1.1])
-            ax.set_ylabel('Num. of players')
+            ax.set_ylabel('Num. of episodes')
         # Set further information on plot
         ax = PlotStandardMeasures._customize_ax(ax, kwargs)
         # Save or return plot
@@ -197,7 +204,7 @@ class PlotStandardMeasures :
             print('Plot saved to', file)
             plt.close()
         else:
-            print('Warning: No plot saved by plot_efficiency. To save plot, provide file name.')
+            print(f'Warning: No plot saved by plot_{measure}. To save plot, provide file name.')
             return ax
 
     @staticmethod
