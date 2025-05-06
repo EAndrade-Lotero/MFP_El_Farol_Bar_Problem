@@ -44,7 +44,7 @@ class Agente () :
 		# Agent recalls previous state?
 		if self.prev_state_ is None:
 			# no previous data, so make random decision
-			return randint(0, 1)
+			decision = randint(0, 1)
 		else:
 			if self.strategy is None:
 				decision = self.use_probability()
@@ -60,6 +60,8 @@ class Agente () :
 					print(f'{info_neigh=}')
 					print(e)
 					raise e
+		if self.debug:
+			print(f'Agent {self.number} makes decision: {decision}')
 		return decision
 
 	def use_probability(self) -> int:
@@ -281,7 +283,7 @@ class MFP(Agente) :
 		else:
 			prev_sate = self.get_prev_state()
 			numerator = self.count_bar_with_capacity(prev_sate) + self.belief_strength
-			denominator = self.count_states(prev_sate) + len(self.states) * self.belief_strength
+			denominator = self.count_states(prev_sate) + 2 * self.belief_strength
 			prob_capacity = numerator / denominator
 			prob_crowded = 1 - prob_capacity
 			eu = prob_capacity - prob_crowded
@@ -312,12 +314,15 @@ class MFP(Agente) :
 			if other_players_attendance < int(self.threshold * self.num_agents):
 				# Increment count of bar with capacity given previous state
 				self.count_bar_with_capacity.increment(prev_state)
-		if self.debug:
-			print(f'I see the previous state: {prev_state}')
-			print('I recall the following frequencies of states:')
-			print(self.count_states)
-			print('I recall the following frequencies of bar with capacity:')
-			print(self.count_bar_with_capacity)
+			if self.debug:
+				print(f'I see the previous state: {prev_state}')
+				print('I recall the following frequencies of states:')
+				print(self.count_states)
+				print('I recall the following frequencies of bar with capacity:')
+				print(self.count_bar_with_capacity)
+		else:
+			if self.debug:
+				print('I do not see the previous state.')
 		# Update previous state
 		self.prev_state_ = obs_state
 

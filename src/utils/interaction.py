@@ -23,7 +23,7 @@ class Episode :
     Runs the problem for a number of rounds and keeps tally of everything.
     '''
 
-    def __init__(self, environment:Bar, agents:List[any], model:str, num_rounds:int):
+    def __init__(self, environment:Bar, agents:List[Agente], model:str, num_rounds:int):
         '''
         Input:
             - environment, object with the environment on which to test the agents.
@@ -176,3 +176,185 @@ class Episode :
         self.environment.reset()
         for agent in self.agents:
             agent.reset()
+
+
+class Experiment :
+    '''
+    Compares given models on a number of measures.
+    '''
+
+    def __init__(
+                self, 
+                agent_class: Agente, 
+                fixed_parameters: Dict[str, any],
+                free_parameters: Dict[str, any],
+                simulation_parameters: Dict[str, any], 
+                measures: Optional[List[str]]=[], 
+                verbose: Optional[bool]=False,
+        ) -> None:
+        '''
+        Input:
+            - agent_class, class to create the agents.
+            - fixed_parameters, a dictionary with the 
+                fixed parameters of the class
+            - free_parameters, a dictionary with the
+                free parameters of the class
+            - simulation_parameters, a diccionary with
+                the number of rounds and episodes
+            - measures, list of measures
+            - verbose, True/False to print information.
+        '''
+        self.agent_class = agent_class
+        self.fixed_parameters = fixed_parameters
+        self.free_parameters = free_parameters
+        bar, agents = self.initialize()
+        self.environment = bar
+        self.agents = agents
+        self.num_rounds = simulation_parameters['num_rounds']
+        self.num_episodes = simulation_parameters['num_episodes']
+        self.measures = measures
+        self.verbose = verbose
+        self.data = None
+
+    def initialize(
+            self,
+            num_agents: Optional[Union[int, None]]=None,
+            agent_class: Optional[Union[int, None]]=None
+        ) -> Tuple[Bar, List[Agente]]:
+        if num_agents is None:
+            num_agents = self.fixed_parameters['num_agents']
+        if agent_class is None:
+            agent_class = self.agent_class
+            free_parameters = self.free_parameters.copy()
+        else:
+            free_parameters = self.free_parameters[agent_class.name()]
+        bar = Bar(
+            num_agents=num_agents,
+            threshold=self.fixed_parameters['threshold']
+        )
+        fixed_parameters = self.fixed_parameters.copy()
+        fixed_parameters['num_agents'] = num_agents
+        agents = [
+            agent_class(
+                free_parameters=free_parameters, 
+                fixed_parameters=fixed_parameters, 
+                n=n
+            ) for n in range(num_agents)
+        ]
+        return bar, agents
+
+    def run_sweep1(
+                self, \
+                parameter: str, \
+                values: List[float], \
+                file_data: Optional[str]=None,
+                ) -> None:
+        '''
+        Runs a parameter sweep of one parameter, 
+        obtains the data and shows the plots on the given measures.
+        Input:
+            - parameter, a string with the name of the parameter.
+            - values, a list with the parameter's values.
+            - file, string with the name of file to save the plot on.
+            - kwargs: dict with additional setup values for plots
+        '''
+        # Creates list of dataframes
+        df_list= list()
+        # Iterate over parameter values
+        for value in tqdm(values, desc=f'Running models for each {parameter}'):
+            if parameter == 'num_agents':
+                bar, agents = self.initialize(num_agents=value)
+                self.environment = bar
+                self.agents = agents
+            elif parameter == 'agent_class':
+                bar, agents = self.initialize(agent_class=value)
+                self.environment = bar
+                self.agents = agents
+                name = value.name()
+            # Check if parameter modifies environment
+            elif parameter == 'threshold':
+                self.environment.threshold = value
+            # Creates list for containing the modified agents
+            if parameter not in ['agent_class']:
+                # Iterate over agents
+                for agent_ in self.agents:
+                    # Modify agent's parameter with value
+                    free_parameters_ = self.free_parameters.copy()
+                    free_parameters_[parameter] = value
+                    agent_.ingest_parameters(
+                        fixed_parameters=self.fixed_parameters, 
+                        free_parameters=free_parameters_
+                    )
+            # Create name
+            name = f'{parameter}={value}'
+            # Create simulation
+            episode = Episode(
+                environment=self.environment,\
+                agents=self.agents,\
+                model=name,\
+                num_rounds=self.num_rounds
+            )
+            # Run simulation
+            df = episode.simulate(
+                num_episodes=self.num_episodes, 
+                verbose=0
+            )
+            # Append dataframe
+            df_list.append(df)
+        # Concatenate dataframes
+        self.data = pd.concat(df_list, ignore_index=True)
+        if file_data is not None:
+            self.data.to_csv(file_data, index=False)
+            print(f'Data saved to {file_data}')
+        print(f'Experiment with {parameter} finished')
+
+    def run_sweep2(self, \
+                    parameter1:str, \
+                    values1:list,\
+                    parameter2:str, \
+                    values2:list, \
+                    file_data:str=None
+                        ):
+        '''
+        Runs a parameter sweep of one parameter, 
+        obtains the data and shows the plots on the given measures.
+        Input:
+            - parameter1, a string with the name of the first parameter.
+            - values1, a list with the first parameter's values.
+            - parameter2, a string with the name of the second parameter.
+            - values2, a list with the second parameter's values.
+            - file_data, string with the name of file to save the plot on.
+        '''
+        # Creates list of dataframes
+        df_list= list()
+        # Creates list of agents
+        for value1 in tqdm(values1):
+            for value2 in tqdm(values2, leave=False):
+                agents_parameter= list()
+                for agent in self.agents:
+                    agent_ = deepcopy(agent)
+                    instruction = f'agent_.{parameter1} = {value1}'
+                    exec(instruction)
+                    instruction = f'agent_.{parameter2} = {value2}'
+                    exec(instruction)
+                    agents_parameter.append(agent_)
+                # Creates name
+                name = f'{parameter1}={value1}, {parameter2}={value2}'
+                # Create simulation
+                episode = Episode(environment=self.environment,\
+                            agents=agents_parameter,\
+                            model=name,\
+                            num_rounds=self.num_rounds)
+                # Run simulation
+                df = episode.simulate(num_episodes=self.num_episodes, verbose=False)
+                df[parameter1] = value1
+                df[parameter2] = value2
+                # Append dataframe
+                df_list.append(df)
+        # Concatenate dataframes
+        self.data = pd.concat(df_list, ignore_index=True)
+        if file_data is not None:
+            self.data.to_csv(file_data, index=False)
+            print(f'Data saved to {file_data}')
+        print(f'Experiment with {parameter1} and {parameter2} finished')
+    

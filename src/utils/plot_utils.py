@@ -68,7 +68,7 @@ class PlotStandardMeasures :
         Input:
             - data, pandas dataframe
         '''
-        self.data = data
+        self.data = data.copy()
 
     def plot_measures(
                 self, 
