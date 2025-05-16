@@ -318,7 +318,7 @@ class MFP(Agente) :
 				print(f'I see the previous state: {prev_state}')
 				print('I recall the following frequencies of states:')
 				print(self.count_states)
-				print('I recall the following frequencies of bar with capacity:')
+				print('I recall the following frequencies of bar with capacity from previous state:')
 				print(self.count_bar_with_capacity)
 		else:
 			if self.debug:
