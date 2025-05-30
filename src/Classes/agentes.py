@@ -257,8 +257,12 @@ class MFP(Agente) :
 		if self.prev_state_ is not None:
 			eus = [self.exp_util(action) for action in [0,1]]
 			prefs = [0, 0]
-			prefs[1] = 1 if eus[1] > eus[0] else 0
-			prefs[0] = 1 if eus[0] > eus[1] else 0
+			if eus[1] > eus[0]:
+				prefs[1] = 1 
+			elif eus[0] > eus[1]:
+				prefs[0] = 1
+			else:
+				prefs = [0.5, 0.5]
 		else:
 			prefs = [0.5, 0.5]
 		if self.debug:
